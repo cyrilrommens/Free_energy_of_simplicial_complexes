@@ -165,7 +165,6 @@ def Kmax_all_cliques(G, kmax=kmax):
     return Cliques
 
 
-
 def Euler_charac(G, kmax=kmax): 
     """
     
@@ -277,7 +276,7 @@ def Graph_thresh(e, i):
     cpdata = (np.copy(np.abs(data))) 
     cpdata[(np.copy(np.abs(data))) <= (1-e)] = 0.0
    
-    thresh_graph= nx.from_numpy_matrix(cpdata[:,:])
+    thresh_graph= nx.from_numpy_array(cpdata[:,:])
     
     return thresh_graph
 
@@ -308,9 +307,9 @@ def densthr(d, i,DIAGNOSTIC=False):
     size = len(i)
     cutoff = np.ceil(d*(size*(size-1)))
     tre = temp[int(cutoff)]
-    G0 = nx.from_numpy_matrix(i)
+    G0 = nx.from_numpy_array(i)
     G0.remove_edges_from(list(nx.selfloop_edges(G0)))
-    G1 = nx.from_numpy_matrix(i)
+    G1 = nx.from_numpy_array(i)
     for u,v,a in G0.edges(data=True):
         if (a.get('weight')) <= tre:
             G1.remove_edge(u, v)
