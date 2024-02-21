@@ -76,8 +76,8 @@ def free_energy(matrix, beta):
 
     # Set initial values
     list_size = len(matrix)
-    num_iterations_energy = 10000
-    num_iterations_entropy = 1000
+    num_iterations_energy = 1000
+    num_iterations_entropy = 100
     initial_probabilities = generate_probability_list(list_size)
 
     # Minimum internal energy with simulated annealing
