@@ -58,9 +58,9 @@ def compute_euler(Mat,cutoff,max_dim):
         d=len(c)-1
         eu+=(-1)**d
     
-    clique_complex = list(C)
+    #clique_complex = list(C)
 
-    return eu, clique_complex
+    return eu #, clique_complex
 
 def shannon_entropy(probabilities):
     """Calculate the Shannon entropy of a probability distribution."""
