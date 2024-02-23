@@ -4,6 +4,11 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import networkx as nx
+import seaborn as sns
+from itertools import combinations
+from scipy.spatial.distance import cdist
+import gudhi as gd
 
 # Define shannon entropy function
 def shannon_entropy(probabilities):
@@ -205,3 +210,133 @@ def generate_symmetric_binary_matrix(n):
 
     return symmetric_matrix
 
+# Define function to draw a visual graph from the connection matrix
+def plot_graph(correlation_matrix, threshold):
+    n = correlation_matrix.shape[0]
+    G = nx.Graph()
+    
+    for i in range(n):
+        for j in range(i + 1, n):
+            if abs(correlation_matrix[i, j]) > threshold:
+                G.add_edge(i, j)
+
+    pos = nx.spring_layout(G)  # You can use a different layout if needed
+    nx.draw(G, pos, with_labels=True, font_weight='bold', node_size=700)
+    plt.show()
+
+# Define a function to obtain a list the simplexes present in the simplicial complex, by counting the complete subgraphs in the connection matrix
+def build_clique_complex(correlation_matrix, threshold, max_clique_size):
+    n = correlation_matrix.shape[0]
+    G = nx.Graph()
+    for i in range(n):
+        for j in range(i + 1, n):
+            if abs(correlation_matrix[i, j]) > threshold:
+                G.add_edge(i, j)
+
+    # Using nx.enumerate_all_cliques in an interactive manner
+    seen_cliques = set()
+    for clique in nx.enumerate_all_cliques(G):
+        if len(clique) > max_clique_size:
+            break
+        unique_clique = tuple(sorted(clique))
+        seen_cliques.add(unique_clique)
+
+    # Building the clique complex
+    clique_complex = [set(clique) for clique in seen_cliques]
+
+    # Sort the list of sets based on the length of cliques and sorted vertices within each clique
+    clique_complex = sorted(clique_complex, key=lambda x: (len(x), sorted(x)))
+
+    return clique_complex
+
+# Define a function to generate a connection matrix of the simplexes from the list of cliques
+def generate_overlap_matrix(sets_list):
+    # Get the set of all unique values in the list of sets
+    all_values = sorted(list({value for s in sets_list for value in s}))
+    
+    # Create a mapping from values to indices
+    value_to_index = {value: index for index, value in enumerate(all_values)}
+    
+    # Initialize the overlap matrix with zeros
+    n = len(sets_list)
+    overlap_matrix = np.zeros((n, n), dtype=int)
+    
+    # Set the entries to 1 where values overlap
+    for i, s1 in enumerate(sets_list):
+        values_s1 = sorted(list(s1))
+        indices_s1 = [value_to_index[value] for value in values_s1]
+        
+        for j, s2 in enumerate(sets_list):
+            values_s2 = sorted(list(s2))
+            indices_s2 = [value_to_index[value] for value in values_s2]
+            
+            if any(value in s2 for value in s1):  # Check for overlap
+                overlap_matrix[i, j] = 1
+    
+    return overlap_matrix
+
+def cliques_gudhi_matrix_comb(distance_matrix,f,d=2):
+  
+    
+    rips_complex = gd.RipsComplex(distance_matrix=distance_matrix, max_edge_length=f)
+    Rips_simplex_tree_sample = rips_complex.create_simplex_tree(max_dimension = d)
+    rips_generator = Rips_simplex_tree_sample.get_filtration()
+    
+    for i in rips_generator:
+        c,w=i
+        if w>0.:
+            yield c
+    
+    #return (i[0] for i in rips_generator if i[1]>0. )
+
+def compute_euler(Mat,cutoff,max_dim):
+    eu=len(Mat)
+    
+    C=build_clique_complex(Mat, cutoff, max_dim) # C is the clique complex ordered by weight and dimension
+    for c in C:
+        
+        d=len(c)-1
+        eu+=(-1)**d
+    
+    #clique_complex = list(C)
+
+    return eu #, clique_complex
+
+def shannon_entropy(probabilities):
+    """Calculate the Shannon entropy of a probability distribution."""
+    entropy = -np.sum(probabilities * np.log2(probabilities))
+    return entropy
+
+def compute_shannon_entropy(M,cutoff,max_dim):
+    
+    epsilon=1e-20
+    
+    N={d:{} for d in range(1,max_dim+1)}
+    
+    G=nx.Graph(M)
+    Neigh={i:set(G.neighbors(i)) for i in G.nodes()}
+    
+    C=cliques_gudhi_matrix_comb(M, cutoff, max_dim)
+    eu=len(M)
+    for c in C:
+        
+        d=len(c)-1
+        eu+=(-1)**d
+        #print(d)
+        boundary=[b for b in combinations(c,d)]
+        n=sum([len(set.intersection(*[Neigh[j] for j in l])) for l in boundary])-1
+        try:
+            N[d][n]+=n
+        except:
+            N[d][n]=0
+            N[d][n]+=n
+            
+  
+    for d in N.keys():
+        norm=sum(N[d].values())
+        N[d]=[N[d][i]/norm for i in N[d].keys() if N[d][i]>=epsilon]
+     
+    E={d:shannon_entropy(N[d]) for d in N.keys()}
+    E["euler"]=eu
+     
+    return E
