@@ -159,7 +159,10 @@ def build_clique_complex(correlation_matrix, threshold, max_clique_size):
 
     # Using nx.enumerate_all_cliques in an interactive manner
     seen_cliques = set()
-    for clique in nx.enumerate_all_cliques(G):
+    nodes_list = [set([i]) for i in range(len(correlation_matrix))] # Add nodes otherwise only > 1-simplexes are included in the clique_complex
+    all_cliques = list(nx.enumerate_all_cliques(G)) + nodes_list
+    for clique in all_cliques:
+
         if len(clique) > max_clique_size:
             break
         unique_clique = tuple(sorted(clique))
@@ -185,3 +188,8 @@ def compute_euler(Mat,cutoff,max_dim):
     clique_complex = list(C)
 
     return eu, clique_complex
+
+def computing_functionals(matrix, cutoff, max_dim):
+    clique_complex = build_clique_complex(matrix, cutoff, max_dim)
+    inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)
+    return free_energy(inverse_connectivity_matrix, 1)
