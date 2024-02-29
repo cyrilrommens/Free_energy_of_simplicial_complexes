@@ -42,7 +42,7 @@ def simulated_annealing_energy(initial_probabilities, matrix, num_iterations, in
 
         history.append(current_value)
 
-    return history
+    return history, current_probabilities
 
 # Define simulated annealing for entropy
 def simulated_annealing_entropy(initial_probabilities, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
@@ -66,7 +66,7 @@ def simulated_annealing_entropy(initial_probabilities, num_iterations, initial_t
 
         entropy_history.append(current_entropy)
 
-    return entropy_history
+    return entropy_history, current_probabilities
 
 # Define random probability generator
 def generate_probability_list(size):
@@ -88,19 +88,28 @@ def free_energy(matrix, beta):
     initial_probabilities = generate_probability_list(list_size)
 
     # Minimum internal energy with simulated annealing
-    min_energy = simulated_annealing_energy(initial_probabilities, matrix, num_iterations_energy)
+    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, matrix, num_iterations_energy)
 
     # Maximum shannon entropy from uniform distribution
     n = len(matrix)
-    uniform_distribution = np.ones(n) / n
-    max_entropy_value = shannon_entropy(uniform_distribution)
+    p_Smax = np.ones(n) / n # uniform distribution
+    max_entropy_value = shannon_entropy(p_Smax)
     max_entropy = [max_entropy_value]*len(min_energy)
 
     # Maximum shannon entropy with simulated annealing
     ####### To approximate the maximum entropy using Simulated Annealing unhash the line below and hash the uniform entropy method ######
-    #max_entropy = simulated_annealing_entropy(initial_probabilities, num_iterations_entropy)
+    #max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities, num_iterations_entropy)
     
-    return min_energy[-1]-beta*max_entropy[-1]
+    U_min = min_energy[-1]
+    S_max = max_entropy[-1]
+    Free_energy = U_min - beta*S_max
+
+    functionals_values = []
+    functionals_values.append(U_min)
+    functionals_values.append(p_Umin)
+    functionals_values.append(S_max)
+
+    return functionals_values #U_min, p_Umin, S_max, p_Smax, Free_energy
 
 def generate_inverse_connectivity_matrix(clique_complex):
     # Convert the list of lists to a list of sets
