@@ -4,6 +4,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+from scipy.stats import genpareto
 
 # Define shannon entropy function
 def shannon_entropy(probabilities):
@@ -16,7 +17,7 @@ def energy_function(p, A):
     return np.sum(A * np.outer(p, p))
 
 # Define simulated annealing for energy
-def simulated_annealing_energy(initial_probabilities, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+def simulated_annealing_energy(initial_probabilities, distribution_type, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = initial_probabilities
     current_value = energy_function(current_probabilities, matrix)
     history = [current_value]
@@ -25,7 +26,7 @@ def simulated_annealing_energy(initial_probabilities, matrix, num_iterations, in
         temperature = initial_temperature * (cooling_rate ** _)
 
         # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(len(current_probabilities))
+        new_probabilities = generate_probability_list(len(current_probabilities), distribution_type)
 
         # Evaluate the entropy of the new set of probabilities
         new_value = energy_function(new_probabilities, matrix)
@@ -40,7 +41,7 @@ def simulated_annealing_energy(initial_probabilities, matrix, num_iterations, in
     return history, current_probabilities
 
 # Define simulated annealing for entropy
-def simulated_annealing_entropy(initial_probabilities, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+def simulated_annealing_entropy(initial_probabilities, distribution_type, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = initial_probabilities
     current_entropy = shannon_entropy(current_probabilities)
     entropy_history = [current_entropy]
@@ -49,7 +50,7 @@ def simulated_annealing_entropy(initial_probabilities, num_iterations, initial_t
         temperature = initial_temperature * (cooling_rate ** _)
 
         # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(len(current_probabilities))
+        new_probabilities = generate_probability_list(len(current_probabilities), distribution_type)
 
         # Evaluate the entropy of the new set of probabilities
         new_entropy = shannon_entropy(new_probabilities)
@@ -63,13 +64,46 @@ def simulated_annealing_entropy(initial_probabilities, num_iterations, initial_t
 
     return entropy_history, current_probabilities
 
-# Define random probability generator
-def generate_probability_list(size):
-    # Generate a list of random numbers
-    random_numbers = np.random.rand(size)
+# Define probability generator
+def generate_probability_list(size, distribution_type='uniform'):
+    if distribution_type == 'uniform':
+        # Generate a list of random numbers
+        probabilities = np.random.rand(size)
 
-    # Normalize the list to make it a probability distribution
-    probabilities = random_numbers / np.sum(random_numbers)
+    elif distribution_type == 'normal':
+        # Sample from a normal distribution
+        probabilities = np.random.normal(size=size)
+
+    elif distribution_type == 'poisson':
+        # Generate a list of random numbers
+        probabilities = np.random.poisson(size=size)
+
+    elif distribution_type == 'chisquare':
+        # Sample from a chi-square distribution
+        probabilities = np.random.chisquare(df=1, size=size)
+
+    elif distribution_type == 'gamma':
+        # Sample from a gamma distribution
+        probabilities = np.random.gamma(shape=2, size=size)
+
+    elif distribution_type == 'pareto':
+        # Sample from pareto distribution
+        probabilities = np.random.pareto(a=2, size=size)
+
+    elif distribution_type == 'lognormal':
+        # Sample from lognormal distribution
+        probabilities = np.random.lognormal(mean=0, sigma=1, size=size)
+
+    elif distribution_type == 'genpareto':
+        # Sample from a generalized Pareto distribution
+        probabilities = genpareto.rvs(c=0.2, size=size)
+
+    else:
+        raise ValueError("Invalid distribution_type. Supported types: 'uniform', 'normal', 'poisson', 'chisquare', 'gamma', 'pareto', 'lognormal', 'genpareto'")
+
+    # Ensure all values are positive (abs) and normalize to sum to 1
+    probabilities = np.abs(probabilities).astype(float)  # Convert to float
+    probabilities /= probabilities.sum()
 
     return probabilities
 
@@ -78,22 +112,22 @@ def free_energy(matrix, beta):
 
     # Set initial values
     list_size = len(matrix)
-    num_iterations_energy = 1000
-    initial_probabilities = generate_probability_list(list_size)
+    num_iterations_energy = 10000
+    initial_probabilities = generate_probability_list(list_size, 'pareto')
 
     # Minimum internal energy with simulated annealing
-    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, matrix, num_iterations_energy)
+    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, 'pareto', matrix, num_iterations_energy)
 
     # Maximum shannon entropy with simulated annealing
     ####### To approximate the maximum entropy using Simulated Annealing unhash the line below and hash the uniform entropy method ######
-    #num_iterations_entropy = 100
-    #max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities, num_iterations_entropy)
+    num_iterations_entropy = 3000
+    max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities,'uniform', num_iterations_entropy)
 
     # Maximum shannon entropy from uniform distribution
-    n = len(matrix)
-    p_Smax = np.ones(n) / n
-    max_entropy_value = shannon_entropy(p_Smax)
-    max_entropy = [max_entropy_value]*len(min_energy)
+    #n = len(matrix)
+    #p_Smax = np.ones(n) / n
+    #max_entropy_value = shannon_entropy(p_Smax)
+    #max_entropy = [max_entropy_value]*len(min_energy)
     
     U_min = min_energy[-1]
     S_max = max_entropy[-1]
