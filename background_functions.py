@@ -16,8 +16,14 @@ def shannon_entropy(probabilities):
 def energy_function(p, A):
     return np.sum(A * np.outer(p, p))
 
+# Define free energy function
+def free_energy_function(p, inverse_matrix, temperature):
+    # Remove any zero probabilities to avoid log(0) issues
+    p = p[p != 0]
+    return np.sum(inverse_matrix * np.outer(p, p)) - temperature * (-np.sum(p * np.log2(p)))
+
 # Define simulated annealing for energy
-def simulated_annealing_energy(initial_probabilities, distribution_type, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+def simulated_annealing_energy(initial_probabilities, distribution_type, pareto_constant, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = initial_probabilities
     current_value = energy_function(current_probabilities, matrix)
     history = [current_value]
@@ -26,13 +32,13 @@ def simulated_annealing_energy(initial_probabilities, distribution_type, matrix,
         temperature = initial_temperature * (cooling_rate ** _)
 
         # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(len(current_probabilities), distribution_type)
+        new_probabilities = generate_probability_list(len(current_probabilities), pareto_constant, distribution_type)
 
         # Evaluate the entropy of the new set of probabilities
         new_value = energy_function(new_probabilities, matrix)
 
         # Accept the new set of probabilities if its entropy is greater
-        if new_value < current_value or np.random.rand() > np.exp((new_value - current_value) / temperature):
+        if new_value < current_value or np.random.rand() < np.exp((current_value - new_value) / temperature):
             current_probabilities = new_probabilities
             current_value = new_value
 
@@ -41,7 +47,7 @@ def simulated_annealing_energy(initial_probabilities, distribution_type, matrix,
     return history, current_probabilities
 
 # Define simulated annealing for entropy
-def simulated_annealing_entropy(initial_probabilities, distribution_type, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+def simulated_annealing_entropy(initial_probabilities, distribution_type, pareto_constant, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = initial_probabilities
     current_entropy = shannon_entropy(current_probabilities)
     entropy_history = [current_entropy]
@@ -50,7 +56,7 @@ def simulated_annealing_entropy(initial_probabilities, distribution_type, num_it
         temperature = initial_temperature * (cooling_rate ** _)
 
         # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(len(current_probabilities), distribution_type)
+        new_probabilities = generate_probability_list(len(current_probabilities), pareto_constant, distribution_type)
 
         # Evaluate the entropy of the new set of probabilities
         new_entropy = shannon_entropy(new_probabilities)
@@ -64,8 +70,32 @@ def simulated_annealing_entropy(initial_probabilities, distribution_type, num_it
 
     return entropy_history, current_probabilities
 
+# Define simulated annealing for energy
+def simulated_annealing_free_energy(initial_probabilities, distribution_type, pareto_constant, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+    current_probabilities = initial_probabilities
+    current_value = energy_function(current_probabilities, matrix)
+    history = [current_value]
+
+    for _ in range(num_iterations):
+        temperature = initial_temperature * (cooling_rate ** _)
+
+        # Generate a new set of probabilities
+        new_probabilities = generate_probability_list(len(current_probabilities), pareto_constant, distribution_type)
+
+        # Evaluate the entropy of the new set of probabilities
+        new_value = free_energy_function(new_probabilities, matrix, 1)
+
+        # Accept the new set of probabilities if its entropy is greater
+        if new_value < current_value:
+            current_probabilities = new_probabilities
+            current_value = new_value
+
+        history.append(current_value)
+
+    return history, current_probabilities
+
 # Define probability generator
-def generate_probability_list(size, distribution_type='uniform'):
+def generate_probability_list(size, pareto_constant, distribution_type='uniform'):
     if distribution_type == 'uniform':
         # Generate a list of random numbers
         probabilities = np.random.rand(size)
@@ -96,7 +126,7 @@ def generate_probability_list(size, distribution_type='uniform'):
 
     elif distribution_type == 'genpareto':
         # Sample from a generalized Pareto distribution
-        probabilities = genpareto.rvs(c=0.2, size=size)
+        probabilities = genpareto.rvs(pareto_constant, size=size)
 
     else:
         raise ValueError("Invalid distribution_type. Supported types: 'uniform', 'normal', 'poisson', 'chisquare', 'gamma', 'pareto', 'lognormal', 'genpareto'")
@@ -112,16 +142,16 @@ def free_energy(matrix, beta):
 
     # Set initial values
     list_size = len(matrix)
-    num_iterations_energy = 10000
+    num_iterations_energy = 100
     initial_probabilities = generate_probability_list(list_size, 'pareto')
 
     # Minimum internal energy with simulated annealing
-    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, 'pareto', matrix, num_iterations_energy)
+    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, 'pareto', -0.1, matrix, num_iterations_energy)
 
     # Maximum shannon entropy with simulated annealing
     ####### To approximate the maximum entropy using Simulated Annealing unhash the line below and hash the uniform entropy method ######
-    num_iterations_entropy = 3000
-    max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities,'uniform', num_iterations_entropy)
+    num_iterations_entropy = 3
+    max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities,'uniform', -0.1, num_iterations_entropy)
 
     # Maximum shannon entropy from uniform distribution
     #n = len(matrix)
@@ -227,3 +257,10 @@ def computing_functionals(matrix, cutoff, max_dim):
     clique_complex = build_clique_complex(matrix, cutoff, max_dim)
     inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)
     return free_energy(inverse_connectivity_matrix, 1)
+
+def computing_functionals_direct(matrix, cutoff, max_dim):
+    clique_complex = build_clique_complex(matrix, cutoff, max_dim)
+    inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)
+    initial_probabilities = generate_probability_list(len(inverse_connectivity_matrix), 'uniform')
+    free_energy_history, f_probabilities = simulated_annealing_free_energy(initial_probabilities, 'uniform', -0.1, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
+    return free_energy_history[-1]
