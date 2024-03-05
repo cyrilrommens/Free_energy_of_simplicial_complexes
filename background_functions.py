@@ -143,10 +143,10 @@ def free_energy(matrix, beta):
     # Set initial values
     list_size = len(matrix)
     num_iterations_energy = 100
-    initial_probabilities = generate_probability_list(list_size, 'pareto')
+    initial_probabilities = generate_probability_list(list_size, 'uniform')
 
     # Minimum internal energy with simulated annealing
-    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, 'pareto', -0.1, matrix, num_iterations_energy)
+    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, 'uniform', -0.1, matrix, num_iterations_energy)
 
     # Maximum shannon entropy with simulated annealing
     ####### To approximate the maximum entropy using Simulated Annealing unhash the line below and hash the uniform entropy method ######
@@ -240,6 +240,7 @@ def build_clique_complex(correlation_matrix, threshold, max_clique_size):
 
     return clique_complex
 
+# Compute the euler characteristic and clique complex
 def compute_euler(Mat,cutoff,max_dim):
     eu=len(Mat)
     
@@ -253,14 +254,34 @@ def compute_euler(Mat,cutoff,max_dim):
 
     return eu, clique_complex
 
+# Compute the free energy indirectly from approximating min_energy - max_entropy
 def computing_functionals(matrix, cutoff, max_dim):
     clique_complex = build_clique_complex(matrix, cutoff, max_dim)
-    inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)
+    inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
     return free_energy(inverse_connectivity_matrix, 1)
 
+# Compute the free energy directly by approximating min_free_energy
 def computing_functionals_direct(matrix, cutoff, max_dim):
     clique_complex = build_clique_complex(matrix, cutoff, max_dim)
-    inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)
+    inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
     initial_probabilities = generate_probability_list(len(inverse_connectivity_matrix), 'uniform')
     free_energy_history, f_probabilities = simulated_annealing_free_energy(initial_probabilities, 'uniform', -0.1, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
     return free_energy_history[-1]
+
+# Compute analytical max entropy and min energy
+def analytical_functionals(matrix, cutoff, max_dim):
+
+    # Generate connection matrix and inverse
+    euler_characteristic, clique_complex = compute_euler(matrix,cutoff,max_dim)
+    matrix, inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)
+
+    # Maximum shannon entropy from uniform distribution
+    n = len(inverse_connectivity_matrix)
+    p_Smax = np.ones(n) / n
+    max_entropy_value = shannon_entropy(p_Smax)
+
+    # Minimum internal energy from analytical solution
+    min_energy_probabilities = (np.inner(matrix,[1]*len(matrix)))/np.sum(matrix)
+    min_energy_value = energy_function(min_energy_probabilities, inverse_connectivity_matrix)
+
+    return max_entropy_value, min_energy_value
