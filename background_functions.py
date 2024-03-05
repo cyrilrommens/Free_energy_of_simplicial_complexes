@@ -150,7 +150,7 @@ def free_energy(matrix, beta):
 
     # Maximum shannon entropy with simulated annealing
     ####### To approximate the maximum entropy using Simulated Annealing unhash the line below and hash the uniform entropy method ######
-    num_iterations_entropy = 3
+    num_iterations_entropy = 10
     max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities,'uniform', -0.1, num_iterations_entropy)
 
     # Maximum shannon entropy from uniform distribution
@@ -183,7 +183,7 @@ def generate_inverse_connectivity_matrix(clique_complex):
     # Compute the inverse connectivity matrix
     inverse_connectivity_matrix = np.linalg.inv(matrix)
 
-    return inverse_connectivity_matrix
+    return matrix, inverse_connectivity_matrix
 
 def simulated_annealing(test_matrix, num_runs, num_iterations_energy, num_iterations_entropy):
     # Example for generating energy and entropy data from a given matrix
