@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from scipy.stats import genpareto
 from collections import defaultdict
+from itertools import combinations
 
 # Define shannon entropy function
 def shannon_entropy(probabilities):
@@ -24,7 +25,7 @@ def free_energy_function(p, inverse_matrix, temperature):
     return np.sum(inverse_matrix * np.outer(p, p)) - temperature * (-np.sum(p * np.log2(p)))
 
 # Define simulated annealing for energy
-def simulated_annealing_energy(initial_probabilities, distribution_type, pareto_constant, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+def simulated_annealing_energy(clique_complex, initial_probabilities, distribution_type, pareto_constant, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = initial_probabilities
     current_value = energy_function(current_probabilities, matrix)
     history = [current_value]
@@ -33,7 +34,7 @@ def simulated_annealing_energy(initial_probabilities, distribution_type, pareto_
         temperature = initial_temperature * (cooling_rate ** _)
 
         # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(len(current_probabilities), pareto_constant, distribution_type)
+        new_probabilities = generate_probability_list(clique_complex, len(current_probabilities), pareto_constant, distribution_type)
 
         # Evaluate the entropy of the new set of probabilities
         new_value = energy_function(new_probabilities, matrix)
@@ -48,7 +49,7 @@ def simulated_annealing_energy(initial_probabilities, distribution_type, pareto_
     return history, current_probabilities
 
 # Define simulated annealing for entropy
-def simulated_annealing_entropy(initial_probabilities, distribution_type, pareto_constant, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+def simulated_annealing_entropy(clique_complex, initial_probabilities, distribution_type, pareto_constant, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = initial_probabilities
     current_entropy = shannon_entropy(current_probabilities)
     entropy_history = [current_entropy]
@@ -57,7 +58,7 @@ def simulated_annealing_entropy(initial_probabilities, distribution_type, pareto
         temperature = initial_temperature * (cooling_rate ** _)
 
         # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(len(current_probabilities), pareto_constant, distribution_type)
+        new_probabilities = generate_probability_list(clique_complex, len(current_probabilities), pareto_constant, distribution_type)
 
         # Evaluate the entropy of the new set of probabilities
         new_entropy = shannon_entropy(new_probabilities)
@@ -72,7 +73,7 @@ def simulated_annealing_entropy(initial_probabilities, distribution_type, pareto
     return entropy_history, current_probabilities
 
 # Define simulated annealing for energy
-def simulated_annealing_free_energy(initial_probabilities, distribution_type, pareto_constant, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+def simulated_annealing_free_energy(clique_complex, initial_probabilities, distribution_type, pareto_constant, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = initial_probabilities
     current_value = energy_function(current_probabilities, matrix)
     history = [current_value]
@@ -81,7 +82,7 @@ def simulated_annealing_free_energy(initial_probabilities, distribution_type, pa
         temperature = initial_temperature * (cooling_rate ** _)
 
         # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(len(current_probabilities), pareto_constant, distribution_type)
+        new_probabilities = generate_probability_list(clique_complex, len(current_probabilities), pareto_constant, distribution_type)
 
         # Evaluate the entropy of the new set of probabilities
         new_value = free_energy_function(new_probabilities, matrix, 1)
@@ -96,7 +97,7 @@ def simulated_annealing_free_energy(initial_probabilities, distribution_type, pa
     return history, current_probabilities
 
 # Define probability generator
-def generate_probability_list(size, pareto_constant, distribution_type='uniform'):
+def generate_probability_list(clique_complex, size, pareto_constant, distribution_type='uniform'):
     if distribution_type == 'uniform':
         # Generate a list of random numbers
         probabilities = np.random.rand(size)
@@ -129,8 +130,12 @@ def generate_probability_list(size, pareto_constant, distribution_type='uniform'
         # Sample from a generalized Pareto distribution
         probabilities = genpareto.rvs(pareto_constant, size=size)
 
+    elif distribution_type == 'custom':
+        # Sample from a clique based distribution
+        probabilities = nodes_probabilities(clique_complex)
+
     else:
-        raise ValueError("Invalid distribution_type. Supported types: 'uniform', 'normal', 'poisson', 'chisquare', 'gamma', 'pareto', 'lognormal', 'genpareto'")
+        raise ValueError("Invalid distribution_type. Supported types: 'uniform', 'normal', 'poisson', 'chisquare', 'gamma', 'pareto', 'lognormal', 'genpareto', 'custom'")
 
     # Ensure all values are positive (abs) and normalize to sum to 1
     probabilities = np.abs(probabilities).astype(float)  # Convert to float
@@ -154,7 +159,7 @@ def clique_complex_probabilities(clique_complex, distribution_type='uniform', pa
 
     # Generate probability list per clique dimension and add
     for i in range(len(result)):
-        clique_probability_per_dim = generate_probability_list(len(result[i]), pareto_constant, distribution_type)
+        clique_probability_per_dim = generate_probability_list(clique_complex, len(result[i]), pareto_constant, distribution_type)
         probabilities_clique_complex.extend(clique_probability_per_dim)
 
     # Normalise the probability list for all clique dimensions together
@@ -164,7 +169,7 @@ def clique_complex_probabilities(clique_complex, distribution_type='uniform', pa
     return probabilities_clique_complex
 
 # Define functions
-def free_energy(matrix, beta):
+def free_energy(clique_complex, matrix, beta):
 
     # Set initial values
     list_size = len(matrix)
@@ -172,18 +177,18 @@ def free_energy(matrix, beta):
     initial_probabilities = clique_complex_probabilities(clique_complex, distribution_type='uniform')
 
     # Minimum internal energy with simulated annealing
-    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, 'pareto', -0.1, matrix, num_iterations_energy)
+    min_energy, p_Umin = simulated_annealing_energy(clique_complex, initial_probabilities, 'pareto', -0.1, matrix, num_iterations_energy)
 
     # Maximum shannon entropy with simulated annealing
     ####### To approximate the maximum entropy using Simulated Annealing unhash the line below and hash the uniform entropy method ######
     num_iterations_entropy = 100
-    #max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities,'uniform', -0.1, num_iterations_entropy)
+    #max_entropy, p_Smax = simulated_annealing_entropy(clique_complex, initial_probabilities,'uniform', -0.1, num_iterations_entropy)
 
     # Maximum shannon entropy from uniform distribution
     n = len(matrix)
     p_Smax = np.ones(n) / n
-    #max_entropy_value = shannon_entropy(p_Smax)
-    #max_entropy = [max_entropy_value]*len(min_energy)
+    max_entropy_value = shannon_entropy(p_Smax)
+    max_entropy = [max_entropy_value]*len(min_energy)
     
     U_min = min_energy[-1]
     S_max = max_entropy[-1]
@@ -211,7 +216,7 @@ def generate_inverse_connectivity_matrix(clique_complex):
 
     return matrix, inverse_connectivity_matrix
 
-def simulated_annealing(test_matrix, num_runs, num_iterations_energy, num_iterations_entropy):
+def simulated_annealing(clique_complex, test_matrix, num_runs, num_iterations_energy, num_iterations_entropy):
     # Example for generating energy and entropy data from a given matrix
     list_size = len(test_matrix)
     energy_history = []
@@ -219,14 +224,14 @@ def simulated_annealing(test_matrix, num_runs, num_iterations_energy, num_iterat
 
     # Run multiple times
     for _ in range(num_runs):
-        initial_probabilities = generate_probability_list(list_size)
+        initial_probabilities = generate_probability_list(clique_complex, list_size)
 
         # Minimum internal energy with simulated annealing
-        min_energy = simulated_annealing_energy(initial_probabilities, test_matrix, num_iterations_energy)
+        min_energy = simulated_annealing_energy(clique_complex, initial_probabilities, test_matrix, num_iterations_energy)
         energy_history.append(min_energy)
 
         # Maximum shannon entropy with simulated annealing
-        max_entropy = simulated_annealing_entropy(initial_probabilities, num_iterations_entropy)
+        max_entropy = simulated_annealing_entropy(clique_complex, initial_probabilities, num_iterations_entropy)
         entropy_history.append(max_entropy)
 
     # Generate averaged list of entropy_histories
@@ -284,14 +289,14 @@ def compute_euler(Mat,cutoff,max_dim):
 def computing_functionals(matrix, cutoff, max_dim):
     clique_complex = build_clique_complex(matrix, cutoff, max_dim)
     inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
-    return free_energy(inverse_connectivity_matrix, 1)
+    return free_energy(clique_complex, inverse_connectivity_matrix, 1)
 
 # Compute the free energy directly by approximating min_free_energy
 def computing_functionals_direct(matrix, cutoff, max_dim):
     clique_complex = build_clique_complex(matrix, cutoff, max_dim)
     inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
-    initial_probabilities = generate_probability_list(len(inverse_connectivity_matrix), 'uniform')
-    free_energy_history, f_probabilities = simulated_annealing_free_energy(initial_probabilities, 'uniform', -0.1, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
+    initial_probabilities = generate_probability_list(clique_complex, len(inverse_connectivity_matrix), 'uniform')
+    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, initial_probabilities, 'uniform', -0.1, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
     return free_energy_history[-1]
 
 # Compute analytical max entropy and min energy
@@ -311,3 +316,54 @@ def analytical_functionals(matrix, cutoff, max_dim):
     min_energy_value = energy_function(min_energy_probabilities, inverse_connectivity_matrix)
 
     return max_entropy_value, min_energy_value
+
+# Generate a probability list according to the clique_complex
+def nodes_probabilities(clique_complex, distribution_type='uniform', pareto_constant=-0.1):
+
+    clique_dict = {}
+    
+    # Create a dictionary to group sets by their length
+    sets_by_length = defaultdict(list)
+
+    # Group sets by length
+    for s in clique_complex:
+        sets_by_length[len(s)].append(s)
+
+    # Convert the dictionary values to lists
+    result = list(sets_by_length.values())
+
+    # Create empty list
+    probabilities_clique_complex = []
+
+    # Generate probability list per clique dimension and add
+    probabilities_nodes = generate_probability_list(clique_complex, len(result[0]), pareto_constant, distribution_type)
+
+    # Normalise the probability list for all clique dimensions together
+    probabilities_nodes = np.abs(probabilities_nodes).astype(float)  # Convert to float
+    probabilities_nodes /= probabilities_nodes.sum()
+
+    for i in range(0, len(result[0])):
+        clique_dict['{' + ', '.join(map(str, clique_complex[i])) + '}']=probabilities_nodes[i]
+
+    for clique in clique_complex:
+        
+        # Convert set to tuple and obtain all possible combinations with length smaller than the original set
+        combinations_in_clique = [set(combination) for r in range(1, len(clique)) for combination in combinations(tuple(clique), r)]
+
+        prior_element_prob = 1
+
+        for element in combinations_in_clique:
+            element_prob = clique_dict['{' + ', '.join(map(str, element)) + '}']  # to convert the set element into a string, so it is interpretable for dictionary
+            prior_element_prob *= element_prob
+
+        posterior_element_prob = prior_element_prob * np.random.rand() # Use a uniform distribution to sample the probability of each simplex
+
+        clique_dict['{' + ', '.join(map(str, clique)) + '}']=posterior_element_prob
+
+    probabilities_clique_complex = list(clique_dict.values())
+
+    # Normalise so the sum equals 1, since probability distribution
+    probabilities_clique_complex = np.abs(probabilities_clique_complex).astype(float)  # Convert to float
+    probabilities_clique_complex /= probabilities_clique_complex.sum()
+
+    return probabilities_clique_complex
