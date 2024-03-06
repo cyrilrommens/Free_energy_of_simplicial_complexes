@@ -5,6 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
 from scipy.stats import genpareto
+from collections import defaultdict
 
 # Define shannon entropy function
 def shannon_entropy(probabilities):
@@ -38,7 +39,7 @@ def simulated_annealing_energy(initial_probabilities, distribution_type, pareto_
         new_value = energy_function(new_probabilities, matrix)
 
         # Accept the new set of probabilities if its entropy is greater
-        if new_value < current_value or np.random.rand() < np.exp((current_value - new_value) / temperature):
+        if new_value < current_value:# or np.random.rand() < np.exp((current_value - new_value) / temperature):
             current_probabilities = new_probabilities
             current_value = new_value
 
@@ -62,7 +63,7 @@ def simulated_annealing_entropy(initial_probabilities, distribution_type, pareto
         new_entropy = shannon_entropy(new_probabilities)
 
         # Accept the new set of probabilities if its entropy is greater
-        if new_entropy > current_entropy or np.random.rand() < np.exp((new_entropy - current_entropy) / temperature):
+        if new_entropy > current_entropy: #or np.random.rand() < np.exp((new_entropy - current_entropy) / temperature):
             current_probabilities = new_probabilities
             current_entropy = new_entropy
 
@@ -137,25 +138,50 @@ def generate_probability_list(size, pareto_constant, distribution_type='uniform'
 
     return probabilities
 
+def clique_complex_probabilities(clique_complex, distribution_type='uniform', pareto_constant=-0.1):
+    # Create a dictionary to group sets by their length
+    sets_by_length = defaultdict(list)
+
+    # Group sets by length
+    for s in clique_complex:
+        sets_by_length[len(s)].append(s)
+
+    # Convert the dictionary values to lists
+    result = list(sets_by_length.values())
+
+    # Create empty list
+    probabilities_clique_complex = []
+
+    # Generate probability list per clique dimension and add
+    for i in range(len(result)):
+        clique_probability_per_dim = generate_probability_list(len(result[i]), pareto_constant, distribution_type)
+        probabilities_clique_complex.extend(clique_probability_per_dim)
+
+    # Normalise the probability list for all clique dimensions together
+    probabilities_clique_complex = np.abs(probabilities_clique_complex).astype(float)  # Convert to float
+    probabilities_clique_complex /= probabilities_clique_complex.sum()
+
+    return probabilities_clique_complex
+
 # Define functions
 def free_energy(matrix, beta):
 
     # Set initial values
     list_size = len(matrix)
-    num_iterations_energy = 100
-    initial_probabilities = generate_probability_list(list_size, 'uniform')
+    num_iterations_energy = 1000
+    initial_probabilities = clique_complex_probabilities(clique_complex, distribution_type='uniform')
 
     # Minimum internal energy with simulated annealing
-    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, 'uniform', -0.1, matrix, num_iterations_energy)
+    min_energy, p_Umin = simulated_annealing_energy(initial_probabilities, 'pareto', -0.1, matrix, num_iterations_energy)
 
     # Maximum shannon entropy with simulated annealing
     ####### To approximate the maximum entropy using Simulated Annealing unhash the line below and hash the uniform entropy method ######
-    num_iterations_entropy = 10
-    max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities,'uniform', -0.1, num_iterations_entropy)
+    num_iterations_entropy = 100
+    #max_entropy, p_Smax = simulated_annealing_entropy(initial_probabilities,'uniform', -0.1, num_iterations_entropy)
 
     # Maximum shannon entropy from uniform distribution
-    #n = len(matrix)
-    #p_Smax = np.ones(n) / n
+    n = len(matrix)
+    p_Smax = np.ones(n) / n
     #max_entropy_value = shannon_entropy(p_Smax)
     #max_entropy = [max_entropy_value]*len(min_energy)
     
