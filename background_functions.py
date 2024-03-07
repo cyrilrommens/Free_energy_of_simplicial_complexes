@@ -264,7 +264,7 @@ def build_clique_complex(correlation_matrix, threshold, max_clique_size):
         seen_cliques.add(unique_clique)
 
     # Building the clique complex
-    clique_complex = [set(clique) for clique in seen_cliques]
+    clique_complex = [frozenset(clique) for clique in seen_cliques]
 
     # Sort the list of sets based on the length of cliques and sorted vertices within each clique
     clique_complex = sorted(clique_complex, key=lambda x: (len(x), sorted(x)))
@@ -298,6 +298,14 @@ def computing_functionals_direct(matrix, cutoff, max_dim):
     initial_probabilities = generate_probability_list(clique_complex, len(inverse_connectivity_matrix), 'uniform')
     free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, initial_probabilities, 'uniform', -0.1, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
     return free_energy_history[-1]
+
+# Compute the free energy directly by approximating min_free_energy
+def computing_functionals_direct_custom(matrix, cutoff, max_dim):
+    clique_complex = build_clique_complex(matrix, cutoff, max_dim)
+    inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
+    initial_probabilities = generate_probability_list(clique_complex, len(inverse_connectivity_matrix), 'custom')
+    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, initial_probabilities, 'custom', -0.1, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
+    return clique_complex, free_energy_history[-1], f_probabilities
 
 # Compute analytical max entropy and min energy
 def analytical_functionals(matrix, cutoff, max_dim):
@@ -343,7 +351,7 @@ def nodes_probabilities(clique_complex, distribution_type='uniform', pareto_cons
     probabilities_nodes /= probabilities_nodes.sum()
 
     for i in range(0, len(result[0])):
-        clique_dict['{' + ', '.join(map(str, clique_complex[i])) + '}']=probabilities_nodes[i]
+        clique_dict[clique_complex[i]]=probabilities_nodes[i]
 
     for clique in clique_complex:
         
@@ -353,12 +361,12 @@ def nodes_probabilities(clique_complex, distribution_type='uniform', pareto_cons
         prior_element_prob = 1
 
         for element in combinations_in_clique:
-            element_prob = clique_dict['{' + ', '.join(map(str, element)) + '}']  # to convert the set element into a string, so it is interpretable for dictionary
+            element_prob = clique_dict[frozenset(element)]  # to convert the set element into a string, so it is interpretable for dictionary
             prior_element_prob *= element_prob
 
         posterior_element_prob = prior_element_prob * np.random.rand() # Use a uniform distribution to sample the probability of each simplex
 
-        clique_dict['{' + ', '.join(map(str, clique)) + '}']=posterior_element_prob
+        clique_dict[frozenset(clique)]=posterior_element_prob
 
     probabilities_clique_complex = list(clique_dict.values())
 
