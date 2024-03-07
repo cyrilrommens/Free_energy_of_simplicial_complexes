@@ -75,7 +75,7 @@ def simulated_annealing_entropy(clique_complex, initial_probabilities, distribut
 # Define simulated annealing for energy
 def simulated_annealing_free_energy(clique_complex, initial_probabilities, distribution_type, pareto_constant, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = initial_probabilities
-    current_value = energy_function(current_probabilities, matrix)
+    current_value = free_energy_function(current_probabilities, matrix, 1)
     history = [current_value]
 
     for _ in range(num_iterations):
