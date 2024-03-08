@@ -4,6 +4,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import networkx as nx
+import pandas as pd
 from scipy.stats import genpareto
 from collections import defaultdict
 from itertools import combinations
@@ -185,3 +186,36 @@ def computing_functionals_direct_custom(matrix, cutoff, max_dim):
     inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
     free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
     return clique_complex, free_energy_history[-1], f_probabilities
+
+# Generate phase randomised time series from a given time series
+def phase_randomization(time_series):
+    # Compute the Fourier transform of the time series
+    fourier_transform = np.fft.fft(time_series)
+
+    # Get the phases of the Fourier transform
+    phases = np.angle(fourier_transform)
+
+    # Shuffle the phases randomly
+    np.random.shuffle(phases)
+
+    # Apply the shuffled phases to the Fourier transform
+    randomized_fourier_transform = np.abs(fourier_transform) * np.exp(1j * phases)
+
+    # Reconstruct the randomized time series
+    randomized_time_series = np.fft.ifft(randomized_fourier_transform)
+
+    # Return the randomized time series
+    return randomized_time_series.real
+
+# Store the phase randomised time series as a dataframe
+def phase_randomization_dataframe(df):
+    randomized_series = []  # Use a list to store the randomized data
+
+    for _, row in df.iterrows():
+        randomized_row = phase_randomization(row.values)
+        randomized_series.append(pd.Series(randomized_row))  # Add randomized row to the list
+
+    # Use concat to combine all the series into a dataframe
+    randomized_df = pd.concat(randomized_series, axis=1).transpose()
+    randomized_df.columns = df.columns  # Assign the column names to the randomized dataframe
+    return randomized_df
