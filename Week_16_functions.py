@@ -89,8 +89,7 @@ def generate_probability_list(clique_complex, distribution_type='uniform'):
 # Define simulated annealing for energy
 def simulated_annealing_free_energy(clique_complex, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
     current_probabilities = generate_probability_list(clique_complex, 'custom')
-    current_value = energy_function(current_probabilities, matrix)
-    #current_value = free_energy_function(current_probabilities, matrix, 1)
+    current_value = free_energy_function(current_probabilities, matrix, 1)
     history = []
 
     for _ in range(num_iterations):
@@ -184,5 +183,5 @@ def analytical_functionals(matrix, cutoff, max_dim):
 def computing_functionals_direct_custom(matrix, cutoff, max_dim):
     clique_complex = build_clique_complex_new(matrix, cutoff, max_dim)
     inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
-    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
+    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, inverse_connectivity_matrix, 1000, initial_temperature=1.0, cooling_rate=0.95)
     return clique_complex, free_energy_history[-1], f_probabilities
