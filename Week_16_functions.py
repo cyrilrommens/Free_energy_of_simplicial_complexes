@@ -183,5 +183,5 @@ def analytical_functionals(matrix, cutoff, max_dim):
 def computing_functionals_direct_custom(matrix, cutoff, max_dim):
     clique_complex = build_clique_complex_new(matrix, cutoff, max_dim)
     inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
-    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, inverse_connectivity_matrix, 1000, initial_temperature=1.0, cooling_rate=0.95)
+    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
     return clique_complex, free_energy_history[-1], f_probabilities
