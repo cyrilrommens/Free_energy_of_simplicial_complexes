@@ -68,10 +68,10 @@ def generate_inverse_connectivity_matrix(clique_complex):
     return matrix, inverse_connectivity_matrix
 
 # Define probability generator
-def generate_probability_list(clique_complex, size, pareto_constant, distribution_type='uniform'):
+def generate_probability_list(clique_complex, distribution_type='uniform'):
     if distribution_type == 'uniform':
         # Generate a list of random numbers
-        probabilities = np.random.rand(size)
+        probabilities = np.random.rand(len(clique_complex))
 
     elif distribution_type == 'custom':
         # Sample from a clique based distribution
@@ -87,16 +87,17 @@ def generate_probability_list(clique_complex, size, pareto_constant, distributio
     return probabilities
 
 # Define simulated annealing for energy
-def simulated_annealing_free_energy(clique_complex, distribution_type, pareto_constant, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
-    current_probabilities = generate_probability_list(clique_complex, len(clique_complex), 'custom')
+def simulated_annealing_free_energy(clique_complex, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
+    current_probabilities = generate_probability_list(clique_complex, 'custom')
     current_value = energy_function(current_probabilities, matrix)
+    #current_value = free_energy_function(current_probabilities, matrix, 1)
     history = []
 
     for _ in range(num_iterations):
         temperature = initial_temperature * (cooling_rate ** _)
 
         # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(clique_complex, len(current_probabilities), pareto_constant, distribution_type)
+        new_probabilities = generate_probability_list(clique_complex, 'custom')
 
         # Evaluate the entropy of the new set of probabilities
         new_value = free_energy_function(new_probabilities, matrix, 1)
@@ -111,7 +112,7 @@ def simulated_annealing_free_energy(clique_complex, distribution_type, pareto_co
     return history, current_probabilities
 
 # Generate a probability list according to the clique_complex
-def nodes_probabilities(clique_complex, distribution_type='uniform', pareto_constant=-0.1):
+def nodes_probabilities(clique_complex, distribution_type='uniform'):
 
     clique_dict = {}
     
@@ -129,7 +130,7 @@ def nodes_probabilities(clique_complex, distribution_type='uniform', pareto_cons
     probabilities_clique_complex = []
 
     # Generate probability list per clique dimension and add
-    probabilities_nodes = generate_probability_list(clique_complex, len(result[0]), pareto_constant, distribution_type)
+    probabilities_nodes = generate_probability_list(clique_complex, distribution_type)
 
     # Normalise the probability list for all clique dimensions together
     probabilities_nodes = np.abs(probabilities_nodes).astype(float)  # Convert to float
@@ -183,5 +184,5 @@ def analytical_functionals(matrix, cutoff, max_dim):
 def computing_functionals_direct_custom(matrix, cutoff, max_dim):
     clique_complex = build_clique_complex_new(matrix, cutoff, max_dim)
     inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
-    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, 'custom', -0.1, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
+    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
     return clique_complex, free_energy_history[-1], f_probabilities
