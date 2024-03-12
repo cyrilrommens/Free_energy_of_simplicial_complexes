@@ -26,6 +26,15 @@ def free_energy_function(p, inverse_matrix, temperature):
     p = p[p != 0]
     return np.sum(inverse_matrix * np.outer(p, p)) - temperature * (-np.sum(p * np.log2(p)))
 
+# Internal energy Fernando improvement
+def energy_function_improvement(x, Q):
+    return x.T @ Q @ x
+
+# Free energy function Fernando improvement
+def free_energy_function_improvement(x, Q, t):
+    entropy_term = - np.sum(x * np.log(np.maximum(x, 1e-10)))  # Avoid log(0), change to np.log2 to improve speed?
+    return x.T @ Q @ x - t * entropy_term
+
 
 # Generate the clique complex
 def build_clique_complex_new(correlation_matrix, threshold, max_clique_size):
