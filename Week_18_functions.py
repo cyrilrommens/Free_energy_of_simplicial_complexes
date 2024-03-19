@@ -10,32 +10,23 @@ from collections import defaultdict
 from itertools import combinations
 
 
-# Define internal energy function
-def energy_function(p, A):
-    return np.sum(A * np.outer(p, p))
-
+############################################################ FUNCTIONALS #######################################################
 # Define shannon entropy function
 def shannon_entropy(probabilities):
     # Remove any zero probabilities to avoid log(0) issues
     probabilities = probabilities[probabilities != 0]
     return -np.sum(probabilities * np.log2(probabilities))
 
-# Define free energy function
-def free_energy_function(p, inverse_matrix, temperature):
-    # Remove any zero probabilities to avoid log(0) issues
-    p = p[p != 0]
-    return np.sum(inverse_matrix * np.outer(p, p)) - temperature * (-np.sum(p * np.log2(p)))
-
-# Internal energy Fernando improvement
-def energy_function_improvement(x, Q):
+# Internal energy function
+def energy_function(x, Q):
     return x.T @ Q @ x
 
-# Free energy function Fernando improvement
-def free_energy_function_improvement(x, Q, t):
-    entropy_term = - np.sum(x * np.log(np.maximum(x, 1e-10)))  # Avoid log(0), change to np.log2 to improve speed?
-    return x.T @ Q @ x - t * entropy_term
+# Free energy function
+def free_energy_function(x, Q, t):
+    entropy_term = - np.sum(x * np.log2(np.maximum(x, 1e-10)))  # Avoid log(0), changed to np.log2 to improve speed.
+    return t*(x.T @ Q @ x) - (1-t) * entropy_term
 
-
+############################################################ GENERATE NECESSITIES ##############################################
 # Generate the clique complex
 def build_clique_complex_new(correlation_matrix, threshold, max_clique_size):
     n = correlation_matrix.shape[0]
@@ -77,6 +68,7 @@ def generate_inverse_connectivity_matrix(clique_complex):
 
     return matrix, inverse_connectivity_matrix
 
+############################################################ GENERATE PROBABILITY DISTRIBUTION ################################
 # Define probability generator
 def generate_probability_list(clique_complex, distribution_type='uniform'):
     if distribution_type == 'uniform':
@@ -95,30 +87,6 @@ def generate_probability_list(clique_complex, distribution_type='uniform'):
     probabilities /= probabilities.sum()
 
     return probabilities
-
-# Define simulated annealing for energy
-def simulated_annealing_free_energy(clique_complex, matrix, num_iterations, initial_temperature=1.0, cooling_rate=0.95):
-    current_probabilities = generate_probability_list(clique_complex, 'custom')
-    current_value = free_energy_function(current_probabilities, matrix, 1)
-    history = []
-
-    for _ in range(num_iterations):
-        temperature = initial_temperature * (cooling_rate ** _)
-
-        # Generate a new set of probabilities
-        new_probabilities = generate_probability_list(clique_complex, 'custom')
-
-        # Evaluate the entropy of the new set of probabilities
-        new_value = free_energy_function(new_probabilities, matrix, 1)
-
-        # Accept the new set of probabilities if its entropy is greater
-        if new_value < current_value:
-            current_probabilities = new_probabilities
-            current_value = new_value
-
-        history.append(current_value)
-
-    return history, current_probabilities
 
 # Generate a probability list according to the clique_complex
 def nodes_probabilities(clique_complex, distribution_type='uniform'):
@@ -171,60 +139,26 @@ def nodes_probabilities(clique_complex, distribution_type='uniform'):
 
     return result, probabilities_clique_complex
 
-# Compute analytical max entropy and min energy
-def analytical_functionals(matrix, cutoff, max_dim):
+############################################################ MINIMISE F #######################################################
+# Define customised optimisation for energy
+def free_energy_minimisation(clique_complex, matrix, num_iterations, temperature):
+    current_probabilities = generate_probability_list(clique_complex, 'custom')
+    current_value = free_energy_function(current_probabilities, matrix, temperature)
+    history = []
 
-    # Generate connection matrix and inverse
-    clique_complex =  build_clique_complex_new(matrix, cutoff, max_dim)
-    matrix, inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)
+    for _ in range(num_iterations):
 
-    # Maximum shannon entropy from uniform distribution
-    n = len(inverse_connectivity_matrix)
-    p_Smax = np.ones(n) / n
-    max_entropy_value = shannon_entropy(p_Smax)
+        # Generate a new set of probabilities
+        new_probabilities = generate_probability_list(clique_complex, 'custom')
 
-    # Minimum internal energy from analytical solution
-    min_energy_probabilities = (np.inner(matrix,[1]*len(matrix)))/np.sum(matrix)
-    min_energy_value = energy_function(min_energy_probabilities, inverse_connectivity_matrix)
+        # Evaluate the entropy of the new set of probabilities
+        new_value = free_energy_function(new_probabilities, matrix, temperature)
 
-    return max_entropy_value, min_energy_value
+        # Accept the new set of probabilities if its entropy is greater
+        if new_value < current_value:
+            current_probabilities = new_probabilities
+            current_value = new_value
 
-# Compute the free energy directly by approximating min_free_energy
-def computing_functionals_direct_custom(matrix, cutoff, max_dim):
-    clique_complex = build_clique_complex_new(matrix, cutoff, max_dim)
-    inverse_connectivity_matrix = generate_inverse_connectivity_matrix(clique_complex)[1]
-    free_energy_history, f_probabilities = simulated_annealing_free_energy(clique_complex, inverse_connectivity_matrix, 10, initial_temperature=1.0, cooling_rate=0.95)
-    return clique_complex, free_energy_history[-1], f_probabilities
+        history.append(current_value)
 
-# Generate phase randomised time series from a given time series
-def phase_randomization(time_series):
-    # Compute the Fourier transform of the time series
-    fourier_transform = np.fft.fft(time_series)
-
-    # Get the phases of the Fourier transform
-    phases = np.angle(fourier_transform)
-
-    # Shuffle the phases randomly
-    np.random.shuffle(phases)
-
-    # Apply the shuffled phases to the Fourier transform
-    randomized_fourier_transform = np.abs(fourier_transform) * np.exp(1j * phases)
-
-    # Reconstruct the randomized time series
-    randomized_time_series = np.fft.ifft(randomized_fourier_transform)
-
-    # Return the randomized time series
-    return randomized_time_series.real
-
-# Store the phase randomised time series as a dataframe
-def phase_randomization_dataframe(df):
-    randomized_series = []  # Use a list to store the randomized data
-
-    for _, row in df.iterrows():
-        randomized_row = phase_randomization(row.values)
-        randomized_series.append(pd.Series(randomized_row))  # Add randomized row to the list
-
-    # Use concat to combine all the series into a dataframe
-    randomized_df = pd.concat(randomized_series, axis=1).transpose()
-    randomized_df.columns = df.columns  # Assign the column names to the randomized dataframe
-    return randomized_df
+    return history, current_probabilities
