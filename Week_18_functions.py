@@ -2,12 +2,10 @@
 
 # Import necessary libraries
 import numpy as np
-import matplotlib.pyplot as plt
-import networkx as nx
-import pandas as pd
 from scipy.stats import genpareto
 from collections import defaultdict
-from itertools import combinations
+from itertools import tee,combinations
+import networkx as nx
 
 
 ############################################################ FUNCTIONALS #######################################################
@@ -27,27 +25,29 @@ def free_energy_function(x, Q, t):
     return t*(x.T @ Q @ x) - (1-t) * entropy_term
 
 ############################################################ GENERATE NECESSITIES ##############################################
-# Generate the clique complex
-def build_clique_complex_new(correlation_matrix, threshold, max_clique_size):
-    n = correlation_matrix.shape[0]
+# Build clique complex using gudhi to improve speed over networkx
+def build_clique_complex(correlation_matrix, max_clique_size):
+    G = nx.from_numpy_array(abs(correlation_matrix))
 
-    # Use NumPy to create a boolean adjacency matrix based on the threshold
-    adjacency_matrix = np.abs(correlation_matrix) > threshold
+    Cl = (i for i in nx.find_cliques(G))
 
-    # Create the graph directly from the adjacency matrix
-    G = nx.from_numpy_array(adjacency_matrix)
+    C = (tuple(sorted(c)) for c in Cl)
+    C = tee(C, max_clique_size+1)
 
-    # Enumerate all cliques directly
-    all_cliques = list(nx.enumerate_all_cliques(G))
+    cliques = [[] for _ in range(max_clique_size+1)]
 
-    # Building the clique complex
-    seen_cliques = {tuple(sorted(clique)) for clique in all_cliques if len(clique) <= max_clique_size}
+    for i in range(max_clique_size+1):
+        K = (i for i in set(c for mc in C[i] for c in combinations(mc, i+1)))
+        for c in K:
+            cliques[i].append(frozenset(c))
 
-    # Sort the list of sets based on the length of cliques and sorted vertices within each clique
-    clique_complex = sorted(map(frozenset, seen_cliques), key=lambda x: (len(x), sorted(x)))
+    result = []
+    for i in range(max_clique_size+1):
+        result.extend(sorted(cliques[i], key=lambda x: (len(x), sorted(x))))
 
-    return clique_complex
+    return result
 
+# Genrate the matrix L^-1 as required by Knill
 def generate_inverse_connectivity_matrix(clique_complex):
     # Convert the list of lists to a list of sets
     clique_complex = [set(inner_list) for inner_list in clique_complex]
