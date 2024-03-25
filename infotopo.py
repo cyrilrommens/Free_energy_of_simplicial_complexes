@@ -185,8 +185,8 @@ class infotopo:
 
     """
     def __init__(self, 
-        dimension_max = 16, 
-        dimension_tot = 16, 
+        dimension_max = 3, 
+        dimension_tot = 116, 
         sample_size = 1000, 
         work_on_transpose = False,
         nb_of_values = 9, 
