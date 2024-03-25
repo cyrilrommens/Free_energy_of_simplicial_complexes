@@ -115,7 +115,6 @@ def compute_info_path(data_mat, dimension_max, dimension_tot, nbtrials):
 
 
 
-
 ###################################################################################
 ################             CLASS INFOTOPO                 #######################
 ###################################################################################
@@ -1926,6 +1925,8 @@ def load_data_sets( dataset_type):
 # #########################################################################
 # #########################################################################
 
+
+'''
 if __name__ == "__main__":
 
     
@@ -1976,6 +1977,7 @@ if __name__ == "__main__":
     if convol_patch:
         dataset = information_topo.convolutional_patchs(dataset) 
     Nentropie = information_topo.simplicial_entropies_decomposition(dataset) 
+    
     stop = timeit.default_timer()
     print('Time for CPU(seconds) entropies: ', stop - start)
     if dataset_type == 1 or dataset_type == 5:
@@ -2034,13 +2036,4 @@ if __name__ == "__main__":
         print("N_info_paths")
         print(N_info_paths)
 
-
-    
-
-    
-
-
-
-        
-
-
+'''
