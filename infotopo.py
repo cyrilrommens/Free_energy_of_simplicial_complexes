@@ -999,6 +999,34 @@ https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-a
     This function computes all total correlations or integrated information or free energy
     """       
 
+# Adjusted total correlation function to avoid plotting
+    def total_correlation_simplicial_lanscape(self, Nentropie):
+        num_fig = 1
+        maxima_tot=-1000000.00
+        minima_tot=1000000.00
+        list_tot_correlation={}
+        Ntotal_correlation={}
+        
+        for i in range(1,self.dimension_max+1):
+            list_tot_correlation[i]=[]
+
+        for x,y in Nentropie.items():
+            sum_marginals = 0
+            for var in x:
+                sum_marginals = sum_marginals + Nentropie[(var,)]
+            total_corr =   sum_marginals - y 
+            Ntotal_correlation.update( {x : total_corr} )
+            list_tot_correlation[len(x)].append(total_corr)
+            if total_corr>maxima_tot:
+                maxima_tot=total_corr
+            if total_corr<minima_tot:
+                minima_tot=total_corr  
+  
+        return Ntotal_correlation
+
+
+# Initial total correlation function
+    '''
     def total_correlation_simplicial_lanscape(self, Nentropie):
         num_fig = 1
         plt.figure(num_fig,figsize=(18,10))
@@ -1059,7 +1087,8 @@ https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-a
         fig_total_correlation_landscape.set_size_inches(18, 10)
         plt.show()
         return Ntotal_correlation
-
+'''
+        
 #########################################################################
 #########################################################################
 ######          INFORMATION DISTANCE AND VOLUMES        #################
