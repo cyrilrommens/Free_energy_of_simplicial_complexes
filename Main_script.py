@@ -1,6 +1,10 @@
 ########################################################################
 ########## REAL+PR-TIMESERIES TO FREE ENERGY DATAFRAMES ################
 ########################################################################
+# Record the start time
+import time
+start_time = time.time()
+
 # Import libraries
 import pandas as pd
 import numpy as np
@@ -269,12 +273,19 @@ def free_energy_function(x, Q, t):
     entropy_term = - np.sum(x * np.log2(np.maximum(x, 1e-10)))  # Avoid log(0), changed to np.log2 to improve speed.
     return t*(x.T @ Q @ x) - (1-t) * entropy_term
 
+# Print the elapsed time
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"Loading functions elapsed time: {elapsed_time:.2f} seconds")
+
+# Record the start time
+start_time = time.time()
 
 #################### OBTAIN INFOTOPO FREE ENERGY ########################
 # INSERT DESIRED SETTINGS
 REST_state = 'REST1' # Choose REST1 or REST2
 max_d = 3
-number_of_variables = 10
+number_of_variables = 30
 
 # Path for REST1 real time series
 path_REAL = glob.glob(f"TimeSeries_REAL\\{REST_state}\\*.txt")
@@ -284,7 +295,7 @@ path_PR = glob.glob(f"TimeSeries_PR\\{REST_state}\\*.txt")
 df_InfoCoho = pd.DataFrame(columns=['identification_code', 'pruned_clique_complex', 'average_free_energy_component'])
 
 # Loop over the datafiles
-for i in range(0, 2): #len(path)):
+for i in range(0, 1): #len(path)):
     filename_REAL = path_REAL[i]
     filename_PR = path_PR[i]
     df_InfoCoho.loc[len(df_InfoCoho)] = obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables)
@@ -292,6 +303,13 @@ for i in range(0, 2): #len(path)):
 # Store dataframe containing patient_ID, pruned_clique_complex and the average_free_energy_component
 df_InfoCoho.to_csv(f'InfoCoho_{REST_state}.txt', sep='\t', index=False)
 
+# Print the elapsed time
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"F Infotopo elapsed time: {elapsed_time:.2f} seconds")
+
+# Record the start time
+start_time = time.time()
 
 ##################### OBTAIN KNILL FREE ENERGY ##########################
 # INSERT DESIRED SETTINGS
@@ -305,8 +323,17 @@ clique_complex_list = df_InfoCoho.iloc[:, 1].apply(eval).tolist()
 df_KnillF = obtain_Knill_free_energy(ID_list, clique_complex_list)
 df_KnillF.to_csv(f'KnillF_{REST_state}.txt', sep='\t', index=False)
 
+# Print the elapsed time
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"F Knill elapsed time: {elapsed_time:.2f} seconds")
+
+# Record the start time
+start_time = time.time()
+
 
 ######################## PRINT RESULTS ##################################
+# Print the results
 print(" ")
 print("Free energy analysis from Information Cohomology:")
 print(df_InfoCoho)
@@ -314,3 +341,8 @@ print(" ")
 print("Free energy analysis from Simplicial Topology:")
 print(df_KnillF)
 print(" ")
+
+# Print the elapsed time
+end_time = time.time()
+elapsed_time = end_time - start_time
+print(f"Print results elapsed time: {elapsed_time:.2f} seconds")
