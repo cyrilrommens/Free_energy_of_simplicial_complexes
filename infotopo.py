@@ -33,7 +33,7 @@ def compute_info_path(data_mat, dimension_max, dimension_tot, nbtrials):
     Nentropie={}
     logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
     logger = logging.getLogger("compute info_path")
-    print("Percent of tuples processed : 0")
+#    print("Percent of tuples processed : 0")
     # Compute all pairs of entropy and mutual informations
     dimension_max_temp = dimension_max + 0
     dimension_max = 2
@@ -47,12 +47,12 @@ def compute_info_path(data_mat, dimension_max, dimension_tot, nbtrials):
     counter=0
     for tuple_var in list_tuples:
         counter=counter+1
-        if dimension_max == dimension_tot:
-             if counter % int(pow(2, dimension_max) / 100) == 0:
-                 logger.info("PROGRESS: at percent #%i"  % (100*counter/pow(2,dimension_max)))
-        else:
-             if counter % int(tot_numb / 100) == 0:
-                 logger.info("PROGRESS: at percent #%i"  % (100*counter/tot_numb))
+#        if dimension_max == dimension_tot:
+#             if counter % int(pow(2, dimension_max) / 100) == 0:
+#                 logger.info("PROGRESS: at percent #%i"  % (100*counter/pow(2,dimension_max)))
+#        else:
+#             if counter % int(tot_numb / 100) == 0:
+#                 logger.info("PROGRESS: at percent #%i"  % (100*counter/tot_numb))
         for x in range(0,len(tuple_var)):
            if x==0:
                matrix_temp=np.reshape(data_mat[:,tuple_var[x]-1],(data_mat[:,tuple_var[x]-1].shape[0],1))
@@ -456,11 +456,11 @@ https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-a
         self._decode(0, self.dimension_tot, self.dimension_max, ntuple1_input)
         logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
         logger = logging.getLogger("compute Proba-Entropy")
-        print("Percent of tuples processed : 0")
+#        print("Percent of tuples processed : 0")
         for x in range(0,(2**self.dimension_max)-1):
-            if self.dimension_max> 10 :
-                 if (x) % int(pow(2,self.dimension_max) / 100) == 0:
-                     logger.info("PROGRESS: at percent #%i"  % (100*x/pow(2,self.dimension_max)))
+#            if self.dimension_max> 10 :
+#                 if (x) % int(pow(2,self.dimension_max) / 100) == 0:
+#                     logger.info("PROGRESS: at percent #%i"  % (100*x/pow(2,self.dimension_max)))
             ntuple=[]
             orderInf=0
             self._decode_all(x,self.dimension_max,orderInf,ntuple)
@@ -501,7 +501,7 @@ https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-a
         Nentropie={}
         logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
         logger = logging.getLogger("compute Proba-Entropy")
-        print("Percent of tuples processed : 0")
+#        print("Percent of tuples processed : 0")
         ################  Create the list of all subsets of i elements in n=dim_tot for all i<dimension_max+1
         allsubsets = lambda n: list(chain(*[combinations(range(1,n), ni) for ni in range(self.dimension_max+1)]))
         list_tuples=allsubsets(self.dimension_tot+1)
@@ -515,12 +515,12 @@ https://stackoverflow.com/questions/101439/the-most-efficient-way-to-implement-a
         for tuple_var in list_tuples:
             ################  create a counter to display the advancement of the script (this is the computationaly costly part) 
             counter=counter+1
-            if self.dimension_max == self.dimension_tot:
-                if counter % int(pow(2, self.dimension_max) / 100) == 0:
-                    logger.info("PROGRESS: at percent #%i"  % (100*counter/pow(2,self.dimension_max)))
-            else:
-                if counter % int(tot_numb / 100) == 0:
-                    logger.info("PROGRESS: at percent #%i"  % (100*counter/tot_numb))
+#            if self.dimension_max == self.dimension_tot:
+#                if counter % int(pow(2, self.dimension_max) / 100) == 0:
+#                    logger.info("PROGRESS: at percent #%i"  % (100*counter/pow(2,self.dimension_max)))
+#            else:
+#                if counter % int(tot_numb / 100) == 0:
+#                    logger.info("PROGRESS: at percent #%i"  % (100*counter/tot_numb))
             ################  create a sub-matrix of data input for all subsets of variables        
             for x in range(0,len(tuple_var)):
                 if x==0:
