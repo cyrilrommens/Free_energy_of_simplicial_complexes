@@ -98,6 +98,10 @@ def infomut_per_dimension(data):
 
     return list_1, list_2, list_3
 
+# Function to filter keys based on length A
+def filter_keys_by_length(dictionary, length):
+    return {key: value for key, value in dictionary.items() if isinstance(key, tuple) and len(key) == length}
+
 # Function to obtain pruned_clique_complex for given REAL and PHASE RANDOMISED timeseries
 def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     # Extract patient ID from filename
@@ -106,9 +110,6 @@ def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     # Run for max_d=3 and nb_variables=60 takes about 4min
     Real_Ninfomut = obtain_mutual_information(filename_REAL, max_d, number_of_variables)[1]
     Random_Ninfomut = obtain_mutual_information(filename_PR, max_d, number_of_variables)[1]
-
-    # Split the mutual informations per dimension
-    Random_I1, Random_I2, Random_I3 = infomut_per_dimension(Random_Ninfomut)
 
     # Given dictionary
     data = Real_Ninfomut
@@ -121,17 +122,23 @@ def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     filtered_data = {}
 
     # Loop through the data
-    for key_length in range(2, 4):
+    for key_length in range(2, max_d+1):
+        # Use the mutinfo's per dimension
+        data = filter_keys_by_length(Real_Ninfomut, key_length)
+
         # Calculate quantiles based on the key length
-        I_min = np.quantile(locals()[f"Random_I{key_length}"], quantile_min)
-        I_max = np.quantile(locals()[f"Random_I{key_length}"], quantile_max)
+        Mutinfo_iD_list = list(filter_keys_by_length(Random_Ninfomut, key_length).values())
+        I_min = np.quantile(Mutinfo_iD_list, quantile_min)
+        I_max = np.quantile(Mutinfo_iD_list, quantile_max)
         
         # Filter data
-        mask = {key: I_min <= value <= I_max for key, value in data.items()}
+        mask = {key: not(I_min <= value <= I_max) for key, value in data.items()}
         filtered_data[key_length] = {key: value for key, value in data.items() if mask[key]}
 
     # Combine filtered dictionaries into one pruned_clique_complex dictionary
-    pruned_clique_complex = {key: value for filtered_dict in filtered_data.values() for key, value in filtered_dict.items()}
+    pruned_clique_complex = filter_keys_by_length(Real_Ninfomut, 1)
+    pruned_clique_complex_MD = {key: value for filtered_dict in filtered_data.values() for key, value in filtered_dict.items()}
+    pruned_clique_complex.update(pruned_clique_complex_MD)
 
     # Compute the average free energy component (average mutual information)
     average_free_energy_component = sum(pruned_clique_complex.values())/len(pruned_clique_complex.values())
@@ -139,7 +146,7 @@ def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     # Remove mutual informations from pruned clique complex
     clique_complex = [frozenset(key) for key in pruned_clique_complex if key in pruned_clique_complex]
 
-    return [identification_code, clique_complex, average_free_energy_component]
+    return [identification_code, average_free_energy_component, len(clique_complex), clique_complex]
 
 # Function to count the occurences of specific cliques in all the given clique complexes
 def count_occurrences(dicts):
@@ -245,24 +252,23 @@ def build_clique_complex(correlation_matrix, max_clique_size):
 
 # Genrate the matrix L^-1 as required by Knill
 def generate_inverse_connectivity_matrix(clique_complex):
-    # Convert the list of lists to a list of sets
-    clique_complex = [set(inner_list) for inner_list in clique_complex]
+    x = clique_complex
+    y = clique_complex
+    intersection_matrix = np.zeros((len(clique_complex), len(clique_complex)))
 
-    # Initialize the matrix
-    size = len(clique_complex)
-    matrix = np.zeros((size, size))
-
-    # Fill the matrix
-    for i in range(0, len(clique_complex)):
-        for j in range(0, len(clique_complex)):
-            if clique_complex[i].intersection(clique_complex[j]):
-                matrix[i, j] = 1
-                #matrix[j, i] = 1  # Ensure the matrix is symmetric
+    # Iterate over each pair of sets from x and y
+    for i, set_x in enumerate(x):
+        for j, set_y in enumerate(y):
+            # Check if set_x is a subset of set_y
+            if set_x.issubset(set_y):
+                # If yes, set the corresponding entry in the intersection_matrix to 1
+                intersection_matrix[i][j] = 1
+                intersection_matrix[j][i] = 1
 
     # Compute the inverse connectivity matrix
-    inverse_connectivity_matrix = np.linalg.inv(matrix)
+    inverse_connectivity_matrix = np.linalg.inv(intersection_matrix)
 
-    return matrix, inverse_connectivity_matrix
+    return intersection_matrix, inverse_connectivity_matrix
 
 # Internal energy function
 def energy_function(x, Q):
@@ -285,17 +291,17 @@ start_time = time.time()
 # INSERT DESIRED SETTINGS
 REST_state = 'REST1' # Choose REST1 or REST2
 max_d = 3
-number_of_variables = 20
+number_of_variables = 10
 
 # Path for REST1 real time series
 path_REAL = glob.glob(f"TimeSeries_REAL\\{REST_state}\\*.txt")
 path_PR = glob.glob(f"TimeSeries_PR\\{REST_state}\\*.txt")
 
 # Create an empty dataframe
-df_InfoCoho = pd.DataFrame(columns=['identification_code', 'pruned_clique_complex', 'average_free_energy_component'])
+df_InfoCoho = pd.DataFrame(columns=['identification_code', 'average_free_energy_component', 'len(pruned_CC)', 'pruned_clique_complex'])
 
 # Loop over the datafiles
-for i in range(0, 1): #len(path)):
+for i in range(0, 3): #len(path)):
     filename_REAL = path_REAL[i]
     filename_PR = path_PR[i]
     df_InfoCoho.loc[len(df_InfoCoho)] = obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables)
@@ -318,7 +324,7 @@ REST_state = 'REST1'
 # Read the CSV file and extract the first and second columns as lists
 df_InfoCoho = pd.read_csv(f'InfoCoho_{REST_state}.txt', sep='\t')
 ID_list = df_InfoCoho['identification_code'].tolist()
-clique_complex_list = df_InfoCoho.iloc[:, 1].apply(eval).tolist()
+clique_complex_list = df_InfoCoho.iloc[:, 3].apply(eval).tolist()
 
 df_KnillF = obtain_Knill_free_energy(ID_list, clique_complex_list)
 df_KnillF.to_csv(f'KnillF_{REST_state}.txt', sep='\t', index=False)

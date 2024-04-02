@@ -285,14 +285,14 @@ end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"Loading functions elapsed time: {elapsed_time:.2f} seconds")
 
-# Record the start time
-start_time = time.time()
 
 #################### OBTAIN INFOTOPO FREE ENERGY ########################
 # INSERT DESIRED SETTINGS
+
+# For settings max_d = 3 and number_of_variables = 60 the full infotopo process takes about 8 min per subject
 REST_state = 'REST1' # Choose REST1 or REST2
 max_d = 3
-number_of_variables = 30
+number_of_variables = 20
 
 # Path for REST1 real time series
 path_REAL = glob.glob(f"TimeSeries_REAL\\{REST_state}\\*.txt")
@@ -302,18 +302,23 @@ path_PR = glob.glob(f"TimeSeries_PR\\{REST_state}\\*.txt")
 df_InfoCoho = pd.DataFrame(columns=['identification_code', 'average_free_energy_component', 'len(pruned_CC)', 'pruned_clique_complex'])
 
 # Loop over the datafiles
-for i in range(0, 3): #len(path)):
+for i in range(0, 10): #len(path)):
+
+    # Record the start time
+    start_time = time.time()
+
     filename_REAL = path_REAL[i]
     filename_PR = path_PR[i]
     df_InfoCoho.loc[len(df_InfoCoho)] = obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables)
 
+    # Print the elapsed time
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print(f"F Infotopo file {i} - elapsed time: {elapsed_time:.2f} seconds")
+
 # Store dataframe containing patient_ID, pruned_clique_complex and the average_free_energy_component
 df_InfoCoho.to_csv(f'InfoCoho_{REST_state}.txt', sep='\t', index=False)
 
-# Print the elapsed time
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"F Infotopo elapsed time: {elapsed_time:.2f} seconds")
 
 ######################## PRINT RESULTS ##################################
 # Print the results

@@ -245,24 +245,23 @@ def build_clique_complex(correlation_matrix, max_clique_size):
 
 # Genrate the matrix L^-1 as required by Knill
 def generate_inverse_connectivity_matrix(clique_complex):
-    # Convert the list of lists to a list of sets
-    clique_complex = [set(inner_list) for inner_list in clique_complex]
+    x = clique_complex
+    y = clique_complex
+    intersection_matrix = np.zeros((len(clique_complex), len(clique_complex)))
 
-    # Initialize the matrix
-    size = len(clique_complex)
-    matrix = np.zeros((size, size))
-
-    # Fill the matrix
-    for i in range(0, len(clique_complex)):
-        for j in range(0, len(clique_complex)):
-            if clique_complex[i].intersection(clique_complex[j]):
-                matrix[i, j] = 1
-                #matrix[j, i] = 1  # Ensure the matrix is symmetric
+    # Iterate over each pair of sets from x and y
+    for i, set_x in enumerate(x):
+        for j, set_y in enumerate(y):
+            # Check if set_x is a subset of set_y
+            if set_x.issubset(set_y):
+                # If yes, set the corresponding entry in the intersection_matrix to 1
+                intersection_matrix[i][j] = 1
+                intersection_matrix[j][i] = 1
 
     # Compute the inverse connectivity matrix
-    inverse_connectivity_matrix = np.linalg.inv(matrix)
+    inverse_connectivity_matrix = np.linalg.inv(intersection_matrix)
 
-    return matrix, inverse_connectivity_matrix
+    return intersection_matrix, inverse_connectivity_matrix
 
 # Internal energy function
 def energy_function(x, Q):
@@ -298,7 +297,6 @@ df_KnillF.to_csv(f'KnillF_{REST_state}.txt', sep='\t', index=False)
 end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"F Knill elapsed time: {elapsed_time:.2f} seconds")
-
 
 
 ######################## PRINT RESULTS ##################################
