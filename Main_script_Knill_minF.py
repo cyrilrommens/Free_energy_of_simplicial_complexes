@@ -121,7 +121,7 @@ def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     filtered_data = {}
 
     # Loop through the data
-    for key_length in range(2, 4):
+    for key_length in range(1, 4):
         # Calculate quantiles based on the key length
         I_min = np.quantile(locals()[f"Random_I{key_length}"], quantile_min)
         I_max = np.quantile(locals()[f"Random_I{key_length}"], quantile_max)
@@ -281,35 +281,6 @@ print(f"Loading functions elapsed time: {elapsed_time:.2f} seconds")
 # Record the start time
 start_time = time.time()
 
-#################### OBTAIN INFOTOPO FREE ENERGY ########################
-# INSERT DESIRED SETTINGS
-REST_state = 'REST1' # Choose REST1 or REST2
-max_d = 3
-number_of_variables = 20
-
-# Path for REST1 real time series
-path_REAL = glob.glob(f"TimeSeries_REAL\\{REST_state}\\*.txt")
-path_PR = glob.glob(f"TimeSeries_PR\\{REST_state}\\*.txt")
-
-# Create an empty dataframe
-df_InfoCoho = pd.DataFrame(columns=['identification_code', 'pruned_clique_complex', 'average_free_energy_component'])
-
-# Loop over the datafiles
-for i in range(0, 1): #len(path)):
-    filename_REAL = path_REAL[i]
-    filename_PR = path_PR[i]
-    df_InfoCoho.loc[len(df_InfoCoho)] = obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables)
-
-# Store dataframe containing patient_ID, pruned_clique_complex and the average_free_energy_component
-df_InfoCoho.to_csv(f'InfoCoho_{REST_state}.txt', sep='\t', index=False)
-
-# Print the elapsed time
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"F Infotopo elapsed time: {elapsed_time:.2f} seconds")
-
-# Record the start time
-start_time = time.time()
 
 ##################### OBTAIN KNILL FREE ENERGY ##########################
 # INSERT DESIRED SETTINGS
@@ -318,7 +289,7 @@ REST_state = 'REST1'
 # Read the CSV file and extract the first and second columns as lists
 df_InfoCoho = pd.read_csv(f'InfoCoho_{REST_state}.txt', sep='\t')
 ID_list = df_InfoCoho['identification_code'].tolist()
-clique_complex_list = df_InfoCoho.iloc[:, 1].apply(eval).tolist()
+clique_complex_list = df_InfoCoho.iloc[:, 3].apply(eval).tolist()
 
 df_KnillF = obtain_Knill_free_energy(ID_list, clique_complex_list)
 df_KnillF.to_csv(f'KnillF_{REST_state}.txt', sep='\t', index=False)
@@ -328,21 +299,11 @@ end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"F Knill elapsed time: {elapsed_time:.2f} seconds")
 
-# Record the start time
-start_time = time.time()
 
 
 ######################## PRINT RESULTS ##################################
 # Print the results
 print(" ")
-print("Free energy analysis from Information Cohomology:")
-print(df_InfoCoho)
-print(" ")
 print("Free energy analysis from Simplicial Topology:")
 print(df_KnillF)
 print(" ")
-
-# Print the elapsed time
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"Print results elapsed time: {elapsed_time:.2f} seconds")

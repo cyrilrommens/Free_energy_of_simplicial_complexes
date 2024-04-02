@@ -98,6 +98,10 @@ def infomut_per_dimension(data):
 
     return list_1, list_2, list_3
 
+# Function to filter keys based on length A
+def filter_keys_by_length(dictionary, length):
+    return {key: value for key, value in dictionary.items() if isinstance(key, tuple) and len(key) == length}
+
 # Function to obtain pruned_clique_complex for given REAL and PHASE RANDOMISED timeseries
 def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     # Extract patient ID from filename
@@ -106,9 +110,6 @@ def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     # Run for max_d=3 and nb_variables=60 takes about 4min
     Real_Ninfomut = obtain_mutual_information(filename_REAL, max_d, number_of_variables)[1]
     Random_Ninfomut = obtain_mutual_information(filename_PR, max_d, number_of_variables)[1]
-
-    # Split the mutual informations per dimension
-    Random_I1, Random_I2, Random_I3 = infomut_per_dimension(Random_Ninfomut)
 
     # Given dictionary
     data = Real_Ninfomut
@@ -121,17 +122,23 @@ def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     filtered_data = {}
 
     # Loop through the data
-    for key_length in range(2, 4):
+    for key_length in range(2, max_d+1):
+        # Use the mutinfo's per dimension
+        data = filter_keys_by_length(Real_Ninfomut, key_length)
+
         # Calculate quantiles based on the key length
-        I_min = np.quantile(locals()[f"Random_I{key_length}"], quantile_min)
-        I_max = np.quantile(locals()[f"Random_I{key_length}"], quantile_max)
+        Mutinfo_iD_list = list(filter_keys_by_length(Random_Ninfomut, key_length).values())
+        I_min = np.quantile(Mutinfo_iD_list, quantile_min)
+        I_max = np.quantile(Mutinfo_iD_list, quantile_max)
         
         # Filter data
-        mask = {key: I_min <= value <= I_max for key, value in data.items()}
+        mask = {key: not(I_min <= value <= I_max) for key, value in data.items()}
         filtered_data[key_length] = {key: value for key, value in data.items() if mask[key]}
 
     # Combine filtered dictionaries into one pruned_clique_complex dictionary
-    pruned_clique_complex = {key: value for filtered_dict in filtered_data.values() for key, value in filtered_dict.items()}
+    pruned_clique_complex = filter_keys_by_length(Real_Ninfomut, 1)
+    pruned_clique_complex_MD = {key: value for filtered_dict in filtered_data.values() for key, value in filtered_dict.items()}
+    pruned_clique_complex.update(pruned_clique_complex_MD)
 
     # Compute the average free energy component (average mutual information)
     average_free_energy_component = sum(pruned_clique_complex.values())/len(pruned_clique_complex.values())
@@ -139,7 +146,7 @@ def obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables):
     # Remove mutual informations from pruned clique complex
     clique_complex = [frozenset(key) for key in pruned_clique_complex if key in pruned_clique_complex]
 
-    return [identification_code, clique_complex, average_free_energy_component]
+    return [identification_code, average_free_energy_component, len(clique_complex), clique_complex]
 
 # Function to count the occurences of specific cliques in all the given clique complexes
 def count_occurrences(dicts):
@@ -285,17 +292,17 @@ start_time = time.time()
 # INSERT DESIRED SETTINGS
 REST_state = 'REST1' # Choose REST1 or REST2
 max_d = 3
-number_of_variables = 20
+number_of_variables = 30
 
 # Path for REST1 real time series
 path_REAL = glob.glob(f"TimeSeries_REAL\\{REST_state}\\*.txt")
 path_PR = glob.glob(f"TimeSeries_PR\\{REST_state}\\*.txt")
 
 # Create an empty dataframe
-df_InfoCoho = pd.DataFrame(columns=['identification_code', 'pruned_clique_complex', 'average_free_energy_component'])
+df_InfoCoho = pd.DataFrame(columns=['identification_code', 'average_free_energy_component', 'len(pruned_CC)', 'pruned_clique_complex'])
 
 # Loop over the datafiles
-for i in range(0, 1): #len(path)):
+for i in range(0, 3): #len(path)):
     filename_REAL = path_REAL[i]
     filename_PR = path_PR[i]
     df_InfoCoho.loc[len(df_InfoCoho)] = obtain_pruned_CC(filename_REAL, filename_PR, max_d, number_of_variables)
@@ -308,41 +315,8 @@ end_time = time.time()
 elapsed_time = end_time - start_time
 print(f"F Infotopo elapsed time: {elapsed_time:.2f} seconds")
 
-# Record the start time
-start_time = time.time()
-
-##################### OBTAIN KNILL FREE ENERGY ##########################
-# INSERT DESIRED SETTINGS
-REST_state = 'REST1'
-
-# Read the CSV file and extract the first and second columns as lists
-df_InfoCoho = pd.read_csv(f'InfoCoho_{REST_state}.txt', sep='\t')
-ID_list = df_InfoCoho['identification_code'].tolist()
-clique_complex_list = df_InfoCoho.iloc[:, 1].apply(eval).tolist()
-
-df_KnillF = obtain_Knill_free_energy(ID_list, clique_complex_list)
-df_KnillF.to_csv(f'KnillF_{REST_state}.txt', sep='\t', index=False)
-
-# Print the elapsed time
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"F Knill elapsed time: {elapsed_time:.2f} seconds")
-
-# Record the start time
-start_time = time.time()
-
-
 ######################## PRINT RESULTS ##################################
 # Print the results
 print(" ")
 print("Free energy analysis from Information Cohomology:")
 print(df_InfoCoho)
-print(" ")
-print("Free energy analysis from Simplicial Topology:")
-print(df_KnillF)
-print(" ")
-
-# Print the elapsed time
-end_time = time.time()
-elapsed_time = end_time - start_time
-print(f"Print results elapsed time: {elapsed_time:.2f} seconds")
